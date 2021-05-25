@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 import tensorflow_addons as tfa
 import tensorflow as tf
-from tensorflow.keras.layers import Dense, LSTM
+from tensorflow.keras.layers import Dense, Dropout, LSTM, Bidirectional
 from tensorflow.keras.models import Model
 from tensorflow.keras.models import Sequential
 import numpy as np
@@ -57,7 +57,7 @@ class ClassifyText():
 		
 		except Exception as e:
 			print("\n error ", e, "\n traceback === ",traceback.format_exc())
-			
+
 
 	def evaluate_model(self, test_df, model, val_x, val_Y):
 		import pdb;pdb.set_trace()
@@ -85,14 +85,16 @@ class ClassifyText():
 			""" training """
 			# LSTM model
 			model = Sequential()
-			model.add(LSTM(32))
+			# model.add(LSTM(300))
+			model.add(Bidirectional(LSTM(300)))
+			model.add(Dropout(0.3))
 			model.add(Dense(2, activation='sigmoid'))
 			model.compile(loss='binary_crossentropy',
 			  optimizer='adam',
 			  metrics=['accuracy'])
 
 			print('Train...')
-			model.fit(train_X, train_Y,validation_data=(val_X, val_Y), validation_steps=30, epochs=50)
+			model.fit(train_X, train_Y, batch_size=128, validation_data=(val_X, val_Y), validation_steps=30, epochs=50)
 			# model.fit(train_X, train_Y, epochs=100)
 			print("\n model summary : \n", model.summary())
 
@@ -105,26 +107,24 @@ class ClassifyText():
 
 	def load_word2vec(self):
 		st = time.time()
-		self.model = KeyedVectors.load_word2vec_format(config.word2vec_model_path, limit=300000, binary=True)
+		self.model = KeyedVectors.load_word2vec_format(config.word2vec_model_path, limit=500000, binary=True)
 		print("\n time to load word2vec model --- ", time.time() - st)
 		print("\n hello vector --- \n", self.model['hello'])
 
 
 	def sent_vectorizer(self, sent):
-		sent_vec = np.zeros((1,300))
+		# sent_vec = np.zeros((1,300))
+		sent_vec=[]
 		numw = 0
 		try:
 			for w in sent.split():
 				try:
-					if numw == 0:
-						sent_vec = self.model[w]
-					else:
-						sent_vec = np.add(sent_vec, self.model[w])
-					numw+=1
+					sent_vec.append(self.model[w])
 				except:
 					self.oov_list.append(w)
 					pass
-			sentence_vector = np.asarray(sent_vec) / numw
+			# sentence_vector = np.asarray(sent_vec) / numw
+			sentence_vector = np.asarray(sent_vec)
 		except Exception as e:
 			print(sent_vec, numw)
 			print("\n Error in sent_vectorizer : ",e)
@@ -176,7 +176,7 @@ class ClassifyText():
 		padded_reviews_encoding = []
 		for enc_review in encoded_reviews:
 			zero_padding_cnt = max_length - enc_review.shape[0]
-			pad = np.zeros((1, 250))
+			pad = np.zeros((1, 300))
 			for i in range(zero_padding_cnt):
 				enc_review = np.concatenate((pad, enc_review), axis=0)
 			padded_reviews_encoding.append(enc_review)
@@ -187,7 +187,7 @@ class ClassifyText():
 		"""
 		return one hot encoding for Y value
 		"""
-		if sentiment == 'positive':return [1,0]
+		if sentiment == 1:return [1,0]
 		else:return [0,1]
 
 
@@ -196,9 +196,9 @@ class ClassifyText():
 		reviews = df['tweet'].tolist()
 		reviews = cleaning_pipeline_obj.cleaning_pipeline(reviews)
 		max_length = self.get_max_length(reviews)
-		# encoded_sents = self.create_w2v_vectors(reviews)
-		# padded_encoded_sents = encoded_sents
-		encoded_sents = self.get_word2vec_enc(reviews)
+
+		encoded_sents = self.create_w2v_vectors(reviews)
+		# encoded_sents = self.get_word2vec_enc(reviews)
 		padded_encoded_sents = self.get_padded_encoded_reviews(encoded_sents, max_length)
 		X = np.array(padded_encoded_sents)
 		print("\n shape of X : ", X.shape)
@@ -247,7 +247,7 @@ class ClassifyText():
 
 if __name__ == "__main__":
 	obj = ClassifyText()
-	data_file_path="/home/swapnil/Projects/github/Text_Classification_using_LSTM_Word2Vec/datasets/AV_sentiment_analysis_2018"
+	data_file_path="/home/swapnil/Projects/github/Text_Classification_using_LSTM_Word2Vec/datasets/AV_sentiment_analysis"
 	obj.main(data_file_path)
 
 	"""
