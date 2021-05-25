@@ -1,0 +1,13 @@
+flask
+flasgger
+pandas
+numpy==1.19.5
+requests
+spacy==2.2
+xlrd
+gunicorn
+scikit-learn
+wordcloud
+tensorflow==2.2
+tensorflow_hub
+tensorflow_addons==0.10.0
